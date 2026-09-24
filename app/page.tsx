@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
+import type { SecurityScanResult, SecurityIssue } from "@/lib/securityScanner";
+import type { SharePublicInfo } from "@/lib/share";
 
 // ---- Types ----
 interface FileInfo {
@@ -121,6 +123,84 @@ function ChevronRight() {
   );
 }
 
+function DownloadIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+function ShieldAlertIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+  );
+}
+
+function ShareIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+    </svg>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
+function CameraIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+      <circle cx="12" cy="13" r="4" />
+    </svg>
+  );
+}
+
+function ImageIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <polyline points="21 15 16 10 5 21" />
+    </svg>
+  );
+}
+
+function PlusIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+
 // ---- GMT+7 Clock Hook ----
 function useGMT7Clock() {
   const [time, setTime] = useState("");
@@ -164,7 +244,25 @@ export default function DashboardPage() {
   const [renameName, setRenameName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<FileInfo | null>(null);
   const [showLanIp, setShowLanIp] = useState(false);
+  const [previewFile, setPreviewFile] = useState<FileInfo | null>(null);
+  const [previewData, setPreviewData] = useState<any>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [securityReport, setSecurityReport] = useState<SecurityScanResult[] | null>(null);
+
+  // Share via Link state
+  const [shareTarget, setShareTarget] = useState<FileInfo | null>(null);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareExpiresHours, setShareExpiresHours] = useState<number>(24);
+  const [sharePassword, setSharePassword] = useState("");
+  const [shareAllowDownload, setShareAllowDownload] = useState(true);
+  const [activeShareLinks, setActiveShareLinks] = useState<SharePublicInfo[]>([]);
+  const [newGeneratedShareUrl, setNewGeneratedShareUrl] = useState<string | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [showMobileUploadMenu, setShowMobileUploadMenu] = useState(false);
   const toastIdRef = useRef(0);
   const dragCounter = useRef(0);
   const currentPathRef = useRef(currentPath);
@@ -268,7 +366,7 @@ export default function DashboardPage() {
     setCurrentPath(parts.slice(0, index + 1).join("/"));
   }
 
-  // Upload files with speed tracking
+  // Upload files with speed tracking & security inspection
   async function handleUpload(fileList: FileList) {
     if (fileList.length === 0) return;
 
@@ -281,6 +379,9 @@ export default function DashboardPage() {
       status: "uploading" as const,
     }));
     setUploads((prev) => [...prev, ...newUploads]);
+
+    const allSecurityWarnings: SecurityScanResult[] = [];
+    const allSecurityDeletions: SecurityScanResult[] = [];
 
     for (let i = 0; i < fileList.length; i++) {
       const file = fileList[i];
@@ -322,11 +423,41 @@ export default function DashboardPage() {
 
           xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
-              setUploads((prev) =>
-                prev.map((u) =>
-                  u.id === uploadId ? { ...u, progress: 100, status: "done", speed: "Complete" } : u
-                )
-              );
+              try {
+                const resData = JSON.parse(xhr.responseText);
+                const warnings: SecurityScanResult[] = resData.securityWarnings || [];
+                const deletions: SecurityScanResult[] = resData.securityDeletions || [];
+
+                if (warnings.length > 0) allSecurityWarnings.push(...warnings);
+                if (deletions.length > 0) allSecurityDeletions.push(...deletions);
+
+                const isDeleted = deletions.some((d: SecurityScanResult) => d.fileName === file.name);
+                const isWarning = warnings.some((w: SecurityScanResult) => w.fileName === file.name);
+
+                if (isDeleted) {
+                  setUploads((prev) =>
+                    prev.map((u) =>
+                      u.id === uploadId
+                        ? { ...u, progress: 100, status: "error", speed: "Blocked (Dangerous)" }
+                        : u
+                    )
+                  );
+                } else {
+                  setUploads((prev) =>
+                    prev.map((u) =>
+                      u.id === uploadId
+                        ? { ...u, progress: 100, status: "done", speed: isWarning ? "Warning" : "Complete" }
+                        : u
+                    )
+                  );
+                }
+              } catch {
+                setUploads((prev) =>
+                  prev.map((u) =>
+                    u.id === uploadId ? { ...u, progress: 100, status: "done", speed: "Complete" } : u
+                  )
+                );
+              }
               resolve();
             } else {
               setUploads((prev) =>
@@ -354,7 +485,22 @@ export default function DashboardPage() {
       }
     }
 
-    addToast(`Uploaded ${fileList.length} file(s)`, "success");
+    const totalIssues = allSecurityWarnings.length + allSecurityDeletions.length;
+    if (totalIssues > 0) {
+      setSecurityReport([...allSecurityDeletions, ...allSecurityWarnings]);
+      const dangerousCount = allSecurityDeletions.length;
+      const warningCount = allSecurityWarnings.length;
+      if (dangerousCount > 0 && warningCount > 0) {
+        addToast(`${dangerousCount} dangerous file(s) blocked & deleted, ${warningCount} uploaded with warnings.`, "error");
+      } else if (dangerousCount > 0) {
+        addToast(`${dangerousCount} dangerous file(s) automatically blocked & deleted!`, "error");
+      } else {
+        addToast(`${warningCount} file(s) uploaded with security warnings.`, "info");
+      }
+    } else {
+      addToast(`Uploaded ${fileList.length} file(s)`, "success");
+    }
+
     fetchFiles(currentPathRef.current);
     fetchStorage();
 
@@ -421,6 +567,7 @@ export default function DashboardPage() {
       handleUpload(e.target.files);
       e.target.value = "";
     }
+    setShowMobileUploadMenu(false);
   }
 
   // Download
@@ -432,6 +579,60 @@ export default function DashboardPage() {
     link.click();
     document.body.removeChild(link);
   }
+
+  // Preview (Google Drive-style)
+  const previewableFiles = files.filter((f) => !f.isDirectory);
+
+  const openPreview = useCallback((file: FileInfo) => {
+    if (file.isDirectory) return;
+    setPreviewFile(file);
+    setPreviewData(null);
+
+    const ext = getFileExtension(file.name).toLowerCase();
+    const needsContent = [
+      "docx", "doc", "txt", "json", "xml", "csv", "tsv", "md",
+      "js", "jsx", "ts", "tsx", "html", "htm", "css", "scss",
+      "py", "sh", "bash", "bat", "cmd", "ps1", "yml", "yaml", "sql", "log", "ini", "conf", "env"
+    ];
+
+    if (needsContent.includes(ext)) {
+      setPreviewLoading(true);
+      fetch(`/api/files/content?path=${encodeURIComponent(file.path)}&_t=${Date.now()}`, { cache: "no-store" })
+        .then((res) => res.json())
+        .then((data) => {
+          setPreviewData(data);
+          setPreviewLoading(false);
+        })
+        .catch(() => {
+          setPreviewLoading(false);
+        });
+    }
+  }, []);
+
+  const closePreview = useCallback(() => {
+    setPreviewFile(null);
+    setPreviewData(null);
+  }, []);
+
+  // Keyboard navigation for preview (Esc to close, Left/Right arrow to navigate)
+  useEffect(() => {
+    if (!previewFile) return;
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        closePreview();
+      } else if (e.key === "ArrowLeft") {
+        const idx = previewableFiles.findIndex((f) => f.path === previewFile?.path);
+        if (idx > 0) openPreview(previewableFiles[idx - 1]);
+      } else if (e.key === "ArrowRight") {
+        const idx = previewableFiles.findIndex((f) => f.path === previewFile?.path);
+        if (idx !== -1 && idx < previewableFiles.length - 1) openPreview(previewableFiles[idx + 1]);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [previewFile, previewableFiles, openPreview, closePreview]);
 
   // Create folder
   async function handleCreateFolder() {
@@ -502,6 +703,79 @@ export default function DashboardPage() {
     }
   }
 
+  // Share via Link methods
+  async function openShareModal(file: FileInfo) {
+    setShareTarget(file);
+    setNewGeneratedShareUrl(null);
+    setSharePassword("");
+    setShareExpiresHours(24);
+    setShareAllowDownload(true);
+    setCopySuccess(false);
+
+    try {
+      const res = await fetch(`/api/share?path=${encodeURIComponent(file.path)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setActiveShareLinks(data.shares || []);
+      }
+    } catch {
+      setActiveShareLinks([]);
+    }
+  }
+
+  async function handleCreateShare() {
+    if (!shareTarget) return;
+    setShareLoading(true);
+    try {
+      const res = await fetch("/api/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          path: shareTarget.path,
+          expiresInHours: shareExpiresHours === 0 ? null : shareExpiresHours,
+          password: sharePassword.trim() || undefined,
+          allowDownload: shareAllowDownload,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.share) {
+        const fullUrl = `${window.location.origin}/share/${data.share.id}`;
+        setNewGeneratedShareUrl(fullUrl);
+        setActiveShareLinks((prev) => [data.share, ...prev]);
+        navigator.clipboard?.writeText(fullUrl);
+        setCopySuccess(true);
+        addToast("Share link created and copied to clipboard!", "success");
+      } else {
+        addToast(data.error || "Failed to create share link", "error");
+      }
+    } catch {
+      addToast("Network error creating share link", "error");
+    } finally {
+      setShareLoading(false);
+    }
+  }
+
+  async function handleRevokeShare(shareId: string) {
+    try {
+      const res = await fetch("/api/share", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: shareId }),
+      });
+      if (res.ok) {
+        setActiveShareLinks((prev) => prev.filter((s) => s.id !== shareId));
+        if (newGeneratedShareUrl && newGeneratedShareUrl.includes(shareId)) {
+          setNewGeneratedShareUrl(null);
+        }
+        addToast("Share link revoked", "info");
+      } else {
+        addToast("Failed to revoke share link", "error");
+      }
+    } catch {
+      addToast("Network error", "error");
+    }
+  }
+
   // Logout
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -541,7 +815,7 @@ export default function DashboardPage() {
       <main style={{ flex: 1, padding: "24px", maxWidth: 1200, width: "100%", margin: "0 auto" }}>
 
         {/* Status + Storage row */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+        <div className="dashboard-status-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
           {/* Storage info */}
           {storage && (
             <div className="card">
@@ -634,22 +908,53 @@ export default function DashboardPage() {
               </span>
             ))}
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <button id="new-folder-button" className="btn btn-sm" onClick={() => { setShowNewFolder(true); setNewFolderName(""); }}>
               + New Folder
             </button>
-            <button
+            <label
+              htmlFor="file-upload-general"
               id="upload-button"
               className="btn btn-sm btn-primary"
-              onClick={() => fileInputRef.current?.click()}
+              style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}
+              title="Upload files from computer or mobile device"
             >
-              Upload Files
-            </button>
+              <UploadIcon />
+              <span>Upload Files</span>
+            </label>
+            <label
+              htmlFor="file-upload-media"
+              className="btn btn-sm"
+              style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}
+              title="Upload photos and videos from camera roll or gallery"
+            >
+              <ImageIcon />
+              <span className="hide-on-mobile-xs">Photos</span>
+            </label>
             <input
+              id="file-upload-general"
               ref={fileInputRef}
               type="file"
               multiple
-              style={{ display: "none" }}
+              className="visually-hidden-file-input"
+              onChange={handleFileInput}
+            />
+            <input
+              id="file-upload-media"
+              ref={mediaInputRef}
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              className="visually-hidden-file-input"
+              onChange={handleFileInput}
+            />
+            <input
+              id="file-upload-camera"
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*,video/*"
+              capture="environment"
+              className="visually-hidden-file-input"
               onChange={handleFileInput}
             />
           </div>
@@ -711,7 +1016,25 @@ export default function DashboardPage() {
             <div className="empty-state">
               <FolderIcon className="file-icon" />
               <p>This folder is empty</p>
-              <p style={{ fontSize: 12, marginTop: 4 }}>Upload files or create a new folder to get started.</p>
+              <p style={{ fontSize: 12, marginTop: 4 }}>Upload files from your computer or phone to get started.</p>
+              <div style={{ display: "flex", gap: 10, marginTop: 16, justifyContent: "center", flexWrap: "wrap" }}>
+                <label
+                  htmlFor="file-upload-general"
+                  className="btn btn-primary"
+                  style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}
+                >
+                  <UploadIcon />
+                  <span>Upload Files</span>
+                </label>
+                <label
+                  htmlFor="file-upload-media"
+                  className="btn"
+                  style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}
+                >
+                  <ImageIcon />
+                  <span>Photo & Video Gallery</span>
+                </label>
+              </div>
             </div>
           ) : (
             <div style={{ overflowX: "auto" }}>
@@ -722,7 +1045,7 @@ export default function DashboardPage() {
                     <th>Size</th>
                     <th>Type</th>
                     <th>Modified</th>
-                    <th style={{ width: 140 }}>Actions</th>
+                    <th style={{ width: 220 }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -731,8 +1054,15 @@ export default function DashboardPage() {
                       <td>
                         <div
                           className="file-row-name"
-                          onClick={() => { if (file.isDirectory) navigateTo(file.path); }}
-                          style={{ cursor: file.isDirectory ? "pointer" : "default" }}
+                          onClick={() => {
+                            if (file.isDirectory) {
+                              navigateTo(file.path);
+                            } else {
+                              openPreview(file);
+                            }
+                          }}
+                          style={{ cursor: "pointer" }}
+                          title={file.isDirectory ? "Open folder" : "Preview file (Google Drive style)"}
                         >
                           {file.isDirectory ? (
                             <FolderIcon className="file-icon folder" />
@@ -754,9 +1084,31 @@ export default function DashboardPage() {
                       <td>
                         <div style={{ display: "flex", gap: 4 }}>
                           {!file.isDirectory && (
-                            <button className="btn btn-sm" onClick={() => handleDownload(file)}>
-                              Download
-                            </button>
+                            <>
+                              <button
+                                className="btn btn-sm btn-primary"
+                                onClick={() => openPreview(file)}
+                                title="Preview file"
+                              >
+                                Preview
+                              </button>
+                              <button
+                                className="btn btn-sm"
+                                onClick={() => openShareModal(file)}
+                                title="Share via link"
+                                style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+                              >
+                                <ShareIcon />
+                                <span>Share</span>
+                              </button>
+                              <button
+                                className="btn btn-sm"
+                                onClick={() => handleDownload(file)}
+                                title="Download file"
+                              >
+                                Download
+                              </button>
+                            </>
                           )}
                           <button
                             className="btn btn-sm"
@@ -846,6 +1198,667 @@ export default function DashboardPage() {
             <div className="modal-actions">
               <button className="btn" onClick={() => setDeleteTarget(null)}>Cancel</button>
               <button className="btn btn-danger" onClick={handleDelete}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Share via Link Modal ---- */}
+      {shareTarget && (
+        <div className="modal-overlay" onClick={() => setShareTarget(null)}>
+          <div className="share-modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="share-modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <ShareIcon />
+                <h3 style={{ margin: 0, fontSize: 16 }}>Share via Link</h3>
+              </div>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => setShareTarget(null)}
+                style={{ padding: "4px 8px" }}
+              >
+                <CloseIcon />
+              </button>
+            </div>
+
+            <div className="share-modal-body">
+              {/* Target File Card */}
+              <div className="share-target-card">
+                <FileIcon className="file-icon" />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {shareTarget.name}
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>
+                    {formatBytes(shareTarget.size)} • {getFileExtension(shareTarget.name).toUpperCase() || "FILE"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Expiration Setting */}
+              <div className="share-field-group">
+                <label className="share-field-label">Link Expiration</label>
+                <select
+                  className="share-select"
+                  value={shareExpiresHours}
+                  onChange={(e) => setShareExpiresHours(Number(e.target.value))}
+                >
+                  <option value={1}>1 Hour</option>
+                  <option value={24}>24 Hours (1 Day)</option>
+                  <option value={168}>7 Days (1 Week)</option>
+                  <option value={720}>30 Days (1 Month)</option>
+                  <option value={0}>Never Expires</option>
+                </select>
+              </div>
+
+              {/* Password Protection */}
+              <div className="share-field-group">
+                <label className="share-field-label">Password Protection (Optional)</label>
+                <input
+                  type="password"
+                  className="input"
+                  placeholder="Leave empty for public link"
+                  value={sharePassword}
+                  onChange={(e) => setSharePassword(e.target.value)}
+                />
+              </div>
+
+              {/* Permissions */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0" }}>
+                <input
+                  type="checkbox"
+                  id="allow-download-check"
+                  checked={shareAllowDownload}
+                  onChange={(e) => setShareAllowDownload(e.target.checked)}
+                  style={{ width: 16, height: 16, accentColor: "var(--accent)", cursor: "pointer" }}
+                />
+                <label htmlFor="allow-download-check" style={{ fontSize: 13.5, cursor: "pointer", userSelect: "none" }}>
+                  Allow recipients to download this file
+                </label>
+              </div>
+
+              {/* Create Button */}
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleCreateShare}
+                disabled={shareLoading}
+                style={{ width: "100%", justifyContent: "center", padding: "10px" }}
+              >
+                {shareLoading ? "Generating Link..." : "Create Share Link"}
+              </button>
+
+              {/* Newly Generated Share Link */}
+              {newGeneratedShareUrl && (
+                <div className="share-link-result">
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--accent)" }}>
+                    Ready to share:
+                  </div>
+                  <div className="share-link-input-row">
+                    <input
+                      readOnly
+                      className="share-link-input"
+                      value={newGeneratedShareUrl}
+                      onClick={(e) => (e.target as HTMLInputElement).select()}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(newGeneratedShareUrl);
+                        setCopySuccess(true);
+                        addToast("Link copied to clipboard!", "success");
+                        setTimeout(() => setCopySuccess(false), 2500);
+                      }}
+                      style={{ padding: "8px 12px" }}
+                    >
+                      <CopyIcon />
+                      <span>{copySuccess ? "Copied!" : "Copy"}</span>
+                    </button>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-secondary)" }}>
+                    Anyone with this link {sharePassword ? "(and passcode)" : ""} can view and {shareAllowDownload ? "download" : "preview"} this file.
+                  </div>
+                </div>
+              )}
+
+              {/* Active Existing Share Links for this File */}
+              {activeShareLinks.length > 0 && (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>
+                    Active Links ({activeShareLinks.length})
+                  </div>
+                  <div className="share-active-list">
+                    {activeShareLinks.map((s) => {
+                      const linkUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/share/${s.id}`;
+                      return (
+                        <div key={s.id} className="share-active-item">
+                          <div style={{ minWidth: 0, flex: 1, paddingRight: 8 }}>
+                            <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              /share/{s.id}
+                            </div>
+                            <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>
+                              Expires: {s.expiresAt ? formatDate(s.expiresAt) : "Never"} • {s.views} view(s) {s.hasPassword ? "• Password Protected" : ""}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                            <button
+                              type="button"
+                              className="btn btn-sm"
+                              onClick={() => {
+                                navigator.clipboard?.writeText(linkUrl);
+                                addToast("Link copied to clipboard!", "success");
+                              }}
+                              title="Copy link"
+                            >
+                              <CopyIcon />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-danger"
+                              onClick={() => handleRevokeShare(s.id)}
+                              title="Revoke and disable link"
+                            >
+                              Revoke
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="share-modal-footer">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setShareTarget(null)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Security Inspection Report Modal ---- */}
+      {securityReport && securityReport.length > 0 && (
+        <div className="modal-overlay" onClick={() => setSecurityReport(null)}>
+          <div className="security-modal" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="security-modal-header">
+              <div className="security-header-left">
+                <div className={`security-shield-icon ${securityReport.some((s) => s.autoDeleted) ? "is-danger" : "is-warning"}`}>
+                  <ShieldAlertIcon />
+                </div>
+                <div>
+                  <h3 className="security-modal-title">Security Inspection Alert</h3>
+                  <p className="security-modal-subtitle">
+                    Automated code scan detected security issues in uploaded file(s).
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="security-modal-close"
+                onClick={() => setSecurityReport(null)}
+                title="Close report"
+              >
+                <CloseIcon />
+              </button>
+            </div>
+
+            {/* Notice Banner */}
+            <div className="security-policy-banner">
+              <strong>Security Policy:</strong> Files with suspicious commands are <u>safely preserved and uploaded</u> with their flagged lines identified below. Only legitimately destructive files (e.g. drive format, system wipe, fork bombs, volume shadow wipes) are automatically blocked and deleted.
+            </div>
+
+            {/* Body */}
+            <div className="security-modal-body">
+              {securityReport.map((fileResult, fIdx) => (
+                <div key={fIdx} className={`security-file-card ${fileResult.autoDeleted ? "card-danger" : "card-warning"}`}>
+                  <div className="security-card-header">
+                    <div className="security-card-title-group">
+                      <FileIcon className="file-icon" />
+                      <span className="security-card-filename">{fileResult.fileName}</span>
+                    </div>
+                    {fileResult.autoDeleted ? (
+                      <span className="security-badge-danger">
+                        🚫 Blocked & Auto-Deleted (Dangerous)
+                      </span>
+                    ) : (
+                      <span className="security-badge-warning">
+                        ⚠️ Uploaded with Warnings (Preserved)
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="security-card-summary">
+                    {fileResult.summary || (fileResult.autoDeleted
+                      ? "File contained dangerous instructions and was deleted to protect system integrity."
+                      : "File was uploaded successfully to storage. Suspicious lines or API patterns detected:")}
+                  </div>
+
+                  <div className="security-issues-list">
+                    {fileResult.issues.map((issue, iIdx) => (
+                      <div key={iIdx} className="security-issue-item">
+                        <div className="security-issue-header">
+                          <div className="security-issue-meta">
+                            {issue.line !== undefined ? (
+                              <span className="security-line-tag">Line {issue.line}</span>
+                            ) : issue.offset ? (
+                              <span className="security-line-tag">Offset {issue.offset}</span>
+                            ) : (
+                              <span className="security-line-tag">Inspection</span>
+                            )}
+                            <span className="security-rule-name">{issue.rule}</span>
+                          </div>
+                          <span className={issue.severity === "critical" ? "severity-pill critical" : "severity-pill suspicious"}>
+                            {issue.severity === "critical" ? "Critical Risk" : "Suspicious"}
+                          </span>
+                        </div>
+
+                        {issue.matchedText && (
+                          <div className="security-code-box">
+                            <div className="security-code-label">
+                              {issue.line !== undefined ? `Line ${issue.line}:` : "Match:"}
+                            </div>
+                            <code className="security-code-content">{issue.matchedText}</code>
+                          </div>
+                        )}
+
+                        <div className="security-issue-desc">
+                          {issue.description}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="security-modal-footer">
+              <span className="security-footer-info">
+                {securityReport.reduce((acc, curr) => acc + curr.issues.length, 0)} issue(s) detected across {securityReport.length} file(s)
+              </span>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setSecurityReport(null)}
+              >
+                Acknowledge & Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Google Drive-style File Preview Modal ---- */}
+      {previewFile && (() => {
+        const ext = getFileExtension(previewFile.name);
+        const isImage = ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "avif"].includes(ext);
+        const isVideo = ["mp4", "webm", "ogg", "ogv", "mov", "m4v", "mkv"].includes(ext);
+        const isAudio = ["mp3", "wav", "flac", "aac", "m4a", "oga"].includes(ext);
+        const isPdf = ext === "pdf";
+        const isDoc = ext === "docx" || ext === "doc";
+        const isJson = ext === "json";
+        const isCsv = ext === "csv" || ext === "tsv";
+        const isTextOrCode = [
+          "txt", "xml", "md", "js", "jsx", "ts", "tsx", "html", "htm", "css", "scss",
+          "py", "sh", "bash", "bat", "cmd", "ps1", "yml", "yaml", "sql", "log", "ini", "conf", "env"
+        ].includes(ext);
+
+        const currentIndex = previewableFiles.findIndex((f) => f.path === previewFile.path);
+        const hasPrev = currentIndex > 0;
+        const hasNext = currentIndex !== -1 && currentIndex < previewableFiles.length - 1;
+
+        return (
+          <div className="preview-modal-overlay" onClick={closePreview}>
+            {/* Top Bar */}
+            <div className="preview-header" onClick={(e) => e.stopPropagation()}>
+              <div className="preview-title-area">
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={closePreview}
+                  style={{ padding: "4px 8px", marginRight: 4 }}
+                  title="Close preview (Esc)"
+                >
+                  <CloseIcon />
+                </button>
+                <span className="preview-file-title" title={previewFile.name}>
+                  {previewFile.name}
+                </span>
+                <span className="preview-badge">{formatBytes(previewFile.size)}</span>
+                <span className="preview-badge" style={{ textTransform: "uppercase" }}>{ext || "FILE"}</span>
+              </div>
+
+              <div className="preview-actions">
+                <a
+                  href={`/api/files/download?path=${encodeURIComponent(previewFile.path)}`}
+                  download={previewFile.name}
+                  className="btn btn-sm btn-primary"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                  title="Download file"
+                >
+                  <DownloadIcon />
+                  <span>Download</span>
+                </a>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={() => openShareModal(previewFile)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                  title="Share via link"
+                >
+                  <ShareIcon />
+                  <span>Share</span>
+                </button>
+                <a
+                  href={`/api/files/raw?path=${encodeURIComponent(previewFile.path)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-sm"
+                  title="Open original file in new browser tab"
+                >
+                  Open in Tab
+                </a>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={closePreview}
+                  style={{ padding: "4px 8px" }}
+                  title="Close preview"
+                >
+                  <CloseIcon />
+                </button>
+              </div>
+            </div>
+
+            {/* Security Notice Banner in Preview */}
+            {previewData?.security && previewData.security.issues.length > 0 && (
+              <div className="preview-security-banner" onClick={(e) => e.stopPropagation()}>
+                <div className="preview-security-content">
+                  <ShieldAlertIcon />
+                  <span>
+                    <strong>Security Notice:</strong> Scanner detected {previewData.security.issues.length} suspicious pattern(s) in this file.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{ background: "var(--bg-tertiary)", borderColor: "var(--border-color)" }}
+                  onClick={() => setSecurityReport([previewData.security])}
+                >
+                  View Scanned Lines
+                </button>
+              </div>
+            )}
+
+            {/* Navigation Arrows */}
+            {hasPrev && (
+              <button
+                type="button"
+                className="preview-nav-btn preview-nav-prev"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openPreview(previewableFiles[currentIndex - 1]);
+                }}
+                title="Previous file (Left Arrow)"
+              >
+                ‹
+              </button>
+            )}
+            {hasNext && (
+              <button
+                type="button"
+                className="preview-nav-btn preview-nav-next"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openPreview(previewableFiles[currentIndex + 1]);
+                }}
+                title="Next file (Right Arrow)"
+              >
+                ›
+              </button>
+            )}
+
+            {/* Content Body */}
+            <div className="preview-body" onClick={(e) => e.stopPropagation()}>
+              {previewLoading ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+                  <div className="loading-spinner" style={{ width: 32, height: 32, borderWidth: 3 }} />
+                  <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>Loading preview...</span>
+                </div>
+              ) : isImage ? (
+                <img
+                  src={`/api/files/raw?path=${encodeURIComponent(previewFile.path)}`}
+                  alt={previewFile.name}
+                  className="preview-image"
+                />
+              ) : isVideo ? (
+                <div className="preview-video-container">
+                  <video
+                    controls
+                    autoPlay
+                    playsInline
+                    src={`/api/files/raw?path=${encodeURIComponent(previewFile.path)}`}
+                    className="preview-video"
+                  >
+                    Your browser does not support HTML5 video playback.
+                  </video>
+                </div>
+              ) : isAudio ? (
+                <div className="preview-audio-card">
+                  <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--accent-dim)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <FileIcon className="file-icon" />
+                  </div>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>{previewFile.name}</div>
+                    <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>{formatBytes(previewFile.size)}</div>
+                  </div>
+                  <audio
+                    controls
+                    autoPlay
+                    src={`/api/files/raw?path=${encodeURIComponent(previewFile.path)}`}
+                    style={{ width: "100%", marginTop: 12 }}
+                  />
+                </div>
+              ) : isPdf ? (
+                <iframe
+                  src={`/api/files/raw?path=${encodeURIComponent(previewFile.path)}`}
+                  style={{ width: "100%", maxWidth: 1000, height: "82vh", border: "none", borderRadius: 8, background: "#fff" }}
+                  title={previewFile.name}
+                />
+              ) : isDoc ? (
+                <div className="doc-paper-container">
+                  <div
+                    className="doc-paper"
+                    dangerouslySetInnerHTML={{ __html: previewData?.html || "<p>Loading document...</p>" }}
+                  />
+                </div>
+              ) : isJson ? (
+                <pre className="code-paper">{previewData?.content || ""}</pre>
+              ) : isCsv && previewData?.headers ? (
+                <div className="csv-paper">
+                  <table className="csv-table">
+                    <thead>
+                      <tr>
+                        {previewData.headers.map((h: string, i: number) => (
+                          <th key={i}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {previewData.rows?.map((row: string[], rIdx: number) => (
+                        <tr key={rIdx}>
+                          {row.map((cell: string, cIdx: number) => (
+                            <td key={cIdx}>{cell}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : isTextOrCode ? (
+                previewData?.security?.issues?.some((i: any) => i.line !== undefined) ? (
+                  <div className="code-paper code-paper-annotated">
+                    {previewData.content.split("\n").map((lineText: string, idx: number) => {
+                      const lineNum = idx + 1;
+                      const issuesOnLine = previewData.security.issues.filter((i: any) => i.line === lineNum);
+                      const hasIssue = issuesOnLine.length > 0;
+                      return (
+                        <div key={idx} className={`code-line-row ${hasIssue ? "has-security-issue" : ""}`}>
+                          <span className="code-line-num">{lineNum}</span>
+                          <span className="code-line-content">{lineText || " "}</span>
+                          {hasIssue && (
+                            <span
+                              className="code-line-badge"
+                              title={issuesOnLine.map((i: any) => `${i.rule}: ${i.description}`).join(" | ")}
+                            >
+                              ⚠️ Line {lineNum}: {issuesOnLine[0].rule}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <pre className="code-paper">{previewData?.content || ""}</pre>
+                )
+              ) : (
+                <div style={{ textAlign: "center", maxWidth: 420, padding: 36, background: "var(--bg-secondary)", borderRadius: "var(--radius-lg)", border: "1px solid var(--border-color)", boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}>
+                  <FileIcon className="file-icon" />
+                  <h3 style={{ marginTop: 16, fontSize: 16 }}>No preview available</h3>
+                  <p style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 8, marginBottom: 24 }}>
+                    {previewFile.name} ({formatBytes(previewFile.size)})
+                  </p>
+                  <a
+                    href={`/api/files/download?path=${encodeURIComponent(previewFile.path)}`}
+                    download={previewFile.name}
+                    className="btn btn-primary"
+                    style={{ width: "100%", justifyContent: "center", display: "inline-flex", gap: 8 }}
+                  >
+                    <DownloadIcon />
+                    <span>Download to View</span>
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Mobile Floating Action Button (FAB) for iOS / Android */}
+      <button
+        type="button"
+        className="mobile-fab"
+        onClick={() => setShowMobileUploadMenu(true)}
+        aria-label="Upload files from mobile device"
+        title="Upload from phone"
+      >
+        <PlusIcon />
+      </button>
+
+      {/* Mobile Upload Bottom Sheet */}
+      {showMobileUploadMenu && (
+        <div className="mobile-sheet-overlay" onClick={() => setShowMobileUploadMenu(false)}>
+          <div className="mobile-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="mobile-sheet-handle" />
+            <div className="mobile-sheet-header">
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Upload to Cloud</h3>
+              <p style={{ margin: "4px 0 0 0", fontSize: 12.5, color: "var(--text-secondary)" }}>
+                Target: <strong>{currentPath ? pathParts[pathParts.length - 1] : "Root"}</strong>
+              </p>
+            </div>
+
+            <div className="mobile-sheet-options">
+              {/* Option 1: Native File Browser (Documents, PDFs, ZIPs, any files) */}
+              <label className="mobile-upload-item">
+                <input
+                  type="file"
+                  multiple
+                  className="visually-hidden-file-input"
+                  onChange={handleFileInput}
+                />
+                <div className="mobile-upload-item-icon" style={{ background: "rgba(108, 138, 255, 0.15)", color: "var(--accent)" }}>
+                  <FileIcon className="file-icon" />
+                </div>
+                <div className="mobile-upload-item-text">
+                  <div className="mobile-upload-item-title">Files & Documents</div>
+                  <div className="mobile-upload-item-desc">Browse PDF, Word, Excel, ZIP, APK, code files</div>
+                </div>
+              </label>
+
+              {/* Option 2: Native Photo & Video Gallery (iOS Photos / Android Media Gallery) */}
+              <label className="mobile-upload-item">
+                <input
+                  type="file"
+                  accept="image/*,video/*"
+                  multiple
+                  className="visually-hidden-file-input"
+                  onChange={handleFileInput}
+                />
+                <div className="mobile-upload-item-icon" style={{ background: "rgba(78, 203, 113, 0.15)", color: "var(--success)" }}>
+                  <ImageIcon />
+                </div>
+                <div className="mobile-upload-item-text">
+                  <div className="mobile-upload-item-title">Photo & Video Gallery</div>
+                  <div className="mobile-upload-item-desc">Upload photos or 4K videos from camera roll</div>
+                </div>
+              </label>
+
+              {/* Option 3: Camera Capture */}
+              <label className="mobile-upload-item">
+                <input
+                  type="file"
+                  accept="image/*,video/*"
+                  capture="environment"
+                  className="visually-hidden-file-input"
+                  onChange={handleFileInput}
+                />
+                <div className="mobile-upload-item-icon" style={{ background: "rgba(255, 193, 69, 0.15)", color: "var(--warning)" }}>
+                  <CameraIcon />
+                </div>
+                <div className="mobile-upload-item-text">
+                  <div className="mobile-upload-item-title">Take Photo or Video</div>
+                  <div className="mobile-upload-item-desc">Capture directly using phone camera</div>
+                </div>
+              </label>
+
+              {/* Option 4: Create Folder */}
+              <button
+                type="button"
+                className="mobile-upload-item"
+                onClick={() => {
+                  setShowMobileUploadMenu(false);
+                  setShowNewFolder(true);
+                  setNewFolderName("");
+                }}
+              >
+                <div className="mobile-upload-item-icon" style={{ background: "rgba(255, 255, 255, 0.08)", color: "var(--text-primary)" }}>
+                  <FolderIcon className="file-icon folder" />
+                </div>
+                <div className="mobile-upload-item-text">
+                  <div className="mobile-upload-item-title">New Folder</div>
+                  <div className="mobile-upload-item-desc">Create a new subfolder in current directory</div>
+                </div>
+              </button>
+            </div>
+
+            <div className="mobile-sheet-footer">
+              <button
+                type="button"
+                className="btn"
+                style={{ width: "100%", justifyContent: "center", padding: "12px", borderRadius: "10px" }}
+                onClick={() => setShowMobileUploadMenu(false)}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>

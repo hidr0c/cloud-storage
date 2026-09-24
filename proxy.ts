@@ -5,8 +5,8 @@ import { verifyToken } from "@/lib/auth";
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow public paths: login, auth APIs, guide
-  const publicPaths = ["/login", "/api/auth/login", "/api/auth/logout", "/guide"];
+  // Allow public paths: login, auth APIs, guide, and share links
+  const publicPaths = ["/login", "/api/auth/login", "/api/auth/logout", "/guide", "/share", "/api/share"];
   if (publicPaths.some((p) => pathname === p || pathname.startsWith(p + "/") || pathname.startsWith(p + "?"))) {
     return NextResponse.next();
   }

@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
+import { scanFileSecurity, SecurityScanResult } from "@/lib/securityScanner";
+
 // POST: Upload files
 export async function POST(request: NextRequest) {
   try {
@@ -41,15 +43,35 @@ export async function POST(request: NextRequest) {
     }
 
     const uploaded: string[] = [];
+    const securityWarnings: SecurityScanResult[] = [];
+    const securityDeletions: SecurityScanResult[] = [];
 
     for (const file of files) {
-      const filePath = path.join(targetDir, file.name);
       const buffer = Buffer.from(await file.arrayBuffer());
+      const scan = scanFileSecurity(file.name, buffer);
+
+      if (scan.status === "dangerous") {
+        // CRITICAL / VERY DANGEROUS: Auto-deleted / blocked from storage
+        securityDeletions.push(scan);
+        continue;
+      }
+
+      // Normal or Suspicious: Write to disk (DO NOT auto-delete suspicious files)
+      const filePath = path.join(targetDir, file.name);
       fs.writeFileSync(filePath, buffer);
       uploaded.push(file.name);
+
+      if (scan.status === "warning") {
+        securityWarnings.push(scan);
+      }
     }
 
-    return Response.json({ success: true, uploaded });
+    return Response.json({
+      success: true,
+      uploaded,
+      securityWarnings,
+      securityDeletions,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Upload failed";
     return Response.json({ error: message }, { status: 500 });
