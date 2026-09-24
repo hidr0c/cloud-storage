@@ -9,7 +9,14 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const dirPath = searchParams.get("path") || "";
     const files = listDirectory(dirPath);
-    return Response.json({ files, path: dirPath });
+    return Response.json(
+      { files, path: dirPath },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      }
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to list files";
     return Response.json({ error: message }, { status: 400 });

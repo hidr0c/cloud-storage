@@ -1,14 +1,13 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Hosting Guide - Cloud Storage",
-  description: "Step-by-step guide for hosting your personal cloud storage globally.",
+  title: "Tailscale Setup Guide - Cloud Storage",
+  description: "Step-by-step guide for hosting your personal cloud storage globally using Tailscale VPN.",
 };
 
 export default function GuidePage() {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* Header */}
       <header className="header">
         <span className="header-title">Cloud Storage</span>
         <nav className="header-nav">
@@ -17,262 +16,266 @@ export default function GuidePage() {
       </header>
 
       <div className="guide-content">
-        <h1>Hosting Guide</h1>
+        <h1>Tailscale Setup Guide</h1>
         <p>
-          This guide explains how to make your cloud storage accessible from anywhere in the
-          world -- not just your local network. You will learn three approaches: Cloudflare Tunnel
-          (recommended), Tailscale (private VPN), and ngrok (quick testing).
+          This guide walks you through setting up Tailscale so you can access your cloud storage
+          from anywhere in the world -- from your phone on mobile data, your office PC, or any
+          device on any network. Tailscale creates a private encrypted tunnel between your devices
+          so your files are never exposed to the public internet.
         </p>
 
-        {/* ---- Section 1: Prerequisites ---- */}
-        <h2>1. Prerequisites</h2>
-        <p>Before you begin, make sure you have:</p>
+        <div className="guide-note">
+          <p>
+            <strong>Why Tailscale?</strong> It is the most secure option. Your server is never exposed
+            to the public internet. Only your authorized devices can see it. All traffic is encrypted
+            end-to-end using WireGuard. It works even behind firewalls and NAT without port forwarding.
+          </p>
+        </div>
+
+        {/* ---- Section 1 ---- */}
+        <h2>1. What You Need</h2>
         <ul>
-          <li>This laptop running and connected to the internet</li>
-          <li>The cloud storage app running (you are reading this, so it is)</li>
-          <li>A strong password set in the <code>.env.local</code> file</li>
+          <li>This laptop (the host server) running and connected to the internet</li>
+          <li>The cloud storage app running on this laptop</li>
+          <li>A Tailscale account (free, supports up to 100 devices)</li>
+          <li>Tailscale installed on every device you want to access from</li>
         </ul>
+
+        {/* ---- Section 2 ---- */}
+        <h2>2. Install Tailscale on This Laptop (Host)</h2>
+
+        <h3><span className="guide-step-num">1</span>Create a Tailscale account</h3>
+        <p>Go to the Tailscale website and sign up for a free account:</p>
+        <pre><code>https://login.tailscale.com/start</code></pre>
+        <p>You can sign in with Google, Microsoft, GitHub, or email.</p>
+
+        <h3><span className="guide-step-num">2</span>Download Tailscale for Windows</h3>
+        <p>Download the Windows installer from:</p>
+        <pre><code>https://tailscale.com/download/windows</code></pre>
+        <p>Or install via command line:</p>
+        <pre><code>{`# Using winget (recommended)
+winget install Tailscale.Tailscale
+
+# Or using Chocolatey
+choco install tailscale`}</code></pre>
+
+        <h3><span className="guide-step-num">3</span>Sign in to Tailscale</h3>
+        <ol>
+          <li>After installation, Tailscale appears in the system tray (bottom-right of taskbar)</li>
+          <li>Click the Tailscale icon and click &quot;Log in&quot;</li>
+          <li>A browser window opens -- sign in with the same account you created</li>
+          <li>Approve the device when prompted</li>
+        </ol>
+
+        <h3><span className="guide-step-num">4</span>Find your Tailscale IP</h3>
+        <p>After connecting, your laptop gets a Tailscale IP address (starts with <code>100.x.x.x</code>). Find it by:</p>
+        <pre><code>{`# Option 1: Click the Tailscale tray icon -> hover over "This device"
+# Option 2: Run in PowerShell:
+tailscale ip`}</code></pre>
+        <p>Write down this IP. Example: <code>100.64.0.1</code></p>
+
+        <div className="guide-note">
+          <p>
+            <strong>Tip:</strong> The Tailscale IP never changes. You can bookmark it and always use the same URL.
+          </p>
+        </div>
+
+        {/* ---- Section 3 ---- */}
+        <h2>3. Install Tailscale on Your Remote Device</h2>
+        <p>
+          Install Tailscale on every device you want to access your cloud storage from.
+          Sign in with the <strong>same account</strong> on each device.
+        </p>
+
+        <h3>Windows / Mac / Linux</h3>
+        <pre><code>{`# Download from:
+https://tailscale.com/download
+
+# Windows: winget install Tailscale.Tailscale
+# Mac: available in the App Store
+# Linux: curl -fsSL https://tailscale.com/install.sh | sh`}</code></pre>
+
+        <h3>iPhone / iPad</h3>
+        <ol>
+          <li>Open the App Store</li>
+          <li>Search for &quot;Tailscale&quot;</li>
+          <li>Install and sign in with the same account</li>
+          <li>Allow the VPN configuration when prompted</li>
+        </ol>
+
+        <h3>Android</h3>
+        <ol>
+          <li>Open the Google Play Store</li>
+          <li>Search for &quot;Tailscale&quot;</li>
+          <li>Install and sign in with the same account</li>
+          <li>Allow the VPN configuration when prompted</li>
+        </ol>
+
+        {/* ---- Section 4 ---- */}
+        <h2>4. Access Your Cloud Storage</h2>
+        <p>
+          Once both devices are connected to Tailscale, open a browser on your remote device and go to:
+        </p>
+        <pre><code>{`http://<YOUR_TAILSCALE_IP>:3000
+
+# Example:
+http://100.64.0.1:3000`}</code></pre>
+
+        <p>
+          You will see the PIN login page. Enter your PIN and you are in. This works from
+          <strong> any network</strong> -- home Wi-Fi, mobile data, office network, hotel Wi-Fi,
+          even another country.
+        </p>
 
         <div className="guide-warning">
           <p>
-            <strong>Important:</strong> Change the default password before exposing this to the internet.
-            Open <code>.env.local</code> in your project folder and change <code>STORAGE_PASSWORD=changeme</code> to
-            a strong password. Then restart the server.
+            <strong>Important:</strong> Both devices must have Tailscale running and connected.
+            On phones, make sure the Tailscale VPN toggle is ON.
           </p>
         </div>
 
-        {/* ---- Section 2: Local Network ---- */}
-        <h2>2. Access on Local Network (Same Wi-Fi)</h2>
+        {/* ---- Section 5 ---- */}
+        <h2>5. Enable HTTPS (Recommended)</h2>
         <p>
-          Any device on the same Wi-Fi network can access your cloud storage right now. You just need
-          your laptop&apos;s local IP address.
+          Tailscale can automatically provision HTTPS certificates for your devices. This means
+          encrypted connections even within the Tailscale network.
         </p>
 
-        <h3>Find your local IP address</h3>
-        <p>Open a terminal (PowerShell or Command Prompt) and run:</p>
-        <pre><code>ipconfig</code></pre>
-        <p>
-          Look for <code>IPv4 Address</code> under your active network adapter. It will look like
-          <code>192.168.1.xxx</code> or <code>10.0.0.xxx</code>.
-        </p>
-
-        <h3>Access from another device</h3>
-        <p>On your phone, tablet, or another computer connected to the same Wi-Fi, open a browser and go to:</p>
-        <pre><code>http://YOUR_IP_ADDRESS:3000</code></pre>
-        <p>For example: <code>http://192.168.1.100:3000</code></p>
-
-        <div className="guide-note">
-          <p>
-            This only works on the same network. For access from a different network (e.g., from
-            your office, a coffee shop, or another city), continue to Section 3.
-          </p>
-        </div>
-
-        {/* ---- Section 3: Cloudflare Tunnel ---- */}
-        <h2>3. Global Access with Cloudflare Tunnel (Recommended)</h2>
-        <p>
-          Cloudflare Tunnel is the best free solution for permanent, secure global access. It creates
-          a secure outbound connection from your laptop to Cloudflare&apos;s network -- no port forwarding,
-          no exposing your IP, and free HTTPS.
-        </p>
-
-        <h3>Step 1: Create a Cloudflare account</h3>
+        <h3>Enable MagicDNS</h3>
         <ol>
-          <li>Go to <code>https://dash.cloudflare.com/sign-up</code></li>
-          <li>Sign up for a free account</li>
-          <li>If you have a domain, add it to Cloudflare. If not, you can use a free <code>.cfargotunnel.com</code> subdomain via quick tunnels.</li>
+          <li>Go to the Tailscale admin console: <code>https://login.tailscale.com/admin/dns</code></li>
+          <li>Under &quot;MagicDNS&quot;, click &quot;Enable MagicDNS&quot;</li>
+          <li>This gives your devices friendly names like <code>my-laptop</code></li>
         </ol>
 
-        <h3>Step 2: Install cloudflared</h3>
-        <p>Download and install the Cloudflare Tunnel client:</p>
-        <pre><code>{`# Windows (using winget)
-winget install Cloudflare.cloudflared
-
-# Or download directly from:
-# https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/`}</code></pre>
-
-        <h3>Step 3: Quick tunnel (fastest way, no domain needed)</h3>
-        <p>Run this single command to get a public URL instantly:</p>
-        <pre><code>cloudflared tunnel --url http://localhost:3000</code></pre>
-        <p>
-          You will see output like:
-        </p>
-        <pre><code>{`Your quick Tunnel has been created!
-Visit it at:
-  https://random-words-here.trycloudflare.com`}</code></pre>
-        <p>
-          Share that URL with anyone. They can access your cloud storage from any device, anywhere.
-          The URL changes each time you restart the command.
-        </p>
-
-        <h3>Step 4: Permanent tunnel with custom domain (optional)</h3>
-        <p>For a permanent URL that never changes:</p>
-        <pre><code>{`# Login to Cloudflare
-cloudflared tunnel login
-
-# Create a named tunnel
-cloudflared tunnel create my-cloud
-
-# Configure the tunnel
-# Create a file: ~/.cloudflared/config.yml with:
-tunnel: my-cloud
-credentials-file: ~/.cloudflared/<TUNNEL_ID>.json
-
-ingress:
-  - hostname: cloud.yourdomain.com
-    service: http://localhost:3000
-  - service: http_status:404
-
-# Add DNS record
-cloudflared tunnel route dns my-cloud cloud.yourdomain.com
-
-# Run the tunnel
-cloudflared tunnel run my-cloud`}</code></pre>
-
-        <div className="guide-note">
-          <p>
-            <strong>Tip:</strong> To run the tunnel automatically when Windows starts, install it as a service:
-            <code> cloudflared service install</code>
-          </p>
-        </div>
-
-        <h3>Step 5: Extra security with Cloudflare Access (optional)</h3>
-        <p>
-          Add an extra authentication layer before anyone even reaches your login page:
-        </p>
+        <h3>Enable HTTPS certificates</h3>
         <ol>
-          <li>Go to the Cloudflare Zero Trust dashboard</li>
-          <li>Navigate to Access {"->"} Applications</li>
-          <li>Add an application with your tunnel&apos;s hostname</li>
-          <li>Configure a policy (e.g., email-based one-time PIN)</li>
+          <li>In the same DNS page, find &quot;HTTPS Certificates&quot; and enable it</li>
+          <li>Run this on your laptop to get a cert:</li>
+        </ol>
+        <pre><code>{`tailscale cert my-laptop.<your-tailnet>.ts.net`}</code></pre>
+        <p>Then access your cloud storage via:</p>
+        <pre><code>{`https://my-laptop.<your-tailnet>.ts.net:3000`}</code></pre>
+
+        {/* ---- Section 6 ---- */}
+        <h2>6. Share Access (Optional)</h2>
+        <p>
+          You can share access with other people without giving them your Tailscale account.
+        </p>
+
+        <h3>Option A: Tailscale sharing (easiest)</h3>
+        <ol>
+          <li>Go to <code>https://login.tailscale.com/admin/machines</code></li>
+          <li>Click the three dots next to your laptop</li>
+          <li>Click &quot;Share...&quot;</li>
+          <li>Enter the email of the person you want to share with</li>
+          <li>They install Tailscale, accept the share, and can access your server</li>
         </ol>
 
-        {/* ---- Section 4: Tailscale ---- */}
-        <h2>4. Alternative: Tailscale (Private VPN)</h2>
+        <h3>Option B: Tailscale Funnel (public URL, no install needed)</h3>
         <p>
-          Tailscale creates a private encrypted network between your devices. Your cloud storage
-          is never exposed to the public internet -- only your authorized devices can connect.
+          If you want to give someone access without them installing Tailscale, you can
+          use Tailscale Funnel to create a temporary public URL:
         </p>
-
-        <h3>Setup</h3>
-        <ol>
-          <li>Go to <code>https://tailscale.com</code> and create a free account</li>
-          <li>Install Tailscale on this laptop (the host)</li>
-          <li>Install Tailscale on each device you want to access from (phone, other PC, etc.)</li>
-          <li>Sign in on all devices with the same account</li>
-          <li>
-            Find this laptop&apos;s Tailscale IP address (shown in the Tailscale app, usually starts
-            with <code>100.x.x.x</code>)
-          </li>
-          <li>
-            On your remote device, open a browser and go to <code>http://100.x.x.x:3000</code>
-          </li>
-        </ol>
-
-        <div className="guide-note">
-          <p>
-            <strong>Advantage:</strong> Tailscale is the most secure option because your server is never
-            exposed to the public internet. Only your authenticated devices can see it.
-          </p>
-        </div>
-
-        {/* ---- Section 5: ngrok ---- */}
-        <h2>5. Alternative: ngrok (Quick Testing)</h2>
+        <pre><code>{`# Expose port 3000 publicly via Tailscale Funnel
+tailscale funnel 3000`}</code></pre>
         <p>
-          ngrok is the simplest way to get a temporary public URL. Best for quick testing or
-          one-time file sharing, not for permanent use.
+          This creates a public URL like <code>https://my-laptop.tail12345.ts.net</code>
+          that anyone can access. Your cloud storage PIN still protects access.
         </p>
-
-        <h3>Setup</h3>
-        <ol>
-          <li>Go to <code>https://ngrok.com</code> and sign up for free</li>
-          <li>Download and install ngrok</li>
-          <li>Connect your account: <code>ngrok config add-authtoken YOUR_TOKEN</code></li>
-          <li>Start the tunnel: <code>ngrok http 3000</code></li>
-          <li>Copy the public URL shown in the terminal (e.g., <code>https://xxxx.ngrok-free.app</code>)</li>
-        </ol>
 
         <div className="guide-warning">
           <p>
-            <strong>Limitation:</strong> The free tier of ngrok has bandwidth limits and the URL changes
-            every time you restart. Not recommended for daily use.
+            <strong>Security:</strong> Funnel exposes your server to the public internet. Make sure
+            you have a strong PIN set. Stop Funnel when not needed: <code>tailscale funnel --reset</code>
           </p>
         </div>
 
-        {/* ---- Section 6: Comparison ---- */}
-        <h2>6. Comparison Table</h2>
-        <div style={{ overflowX: "auto" }}>
-          <table className="file-table" style={{ background: "var(--bg-secondary)", borderRadius: "var(--radius-lg)" }}>
-            <thead>
-              <tr>
-                <th>Feature</th>
-                <th>Cloudflare Tunnel</th>
-                <th>Tailscale</th>
-                <th>ngrok</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>Cost</td><td>Free</td><td>Free (up to 100 devices)</td><td>Free (limited)</td></tr>
-              <tr><td>Permanent URL</td><td>Yes (with domain)</td><td>Yes (Tailscale IP)</td><td>No (changes on restart)</td></tr>
-              <tr><td>HTTPS</td><td>Automatic</td><td>Automatic</td><td>Automatic</td></tr>
-              <tr><td>Public access</td><td>Yes</td><td>No (private only)</td><td>Yes</td></tr>
-              <tr><td>Speed</td><td>Fast (CDN edge)</td><td>Fast (direct P2P)</td><td>Good</td></tr>
-              <tr><td>Setup difficulty</td><td>Medium</td><td>Easy</td><td>Very easy</td></tr>
-              <tr><td>Best for</td><td>Permanent hosting</td><td>Personal/team use</td><td>Quick testing</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        {/* ---- Section 7: Production Tips ---- */}
-        <h2>7. Production Tips</h2>
-
-        <h3>Keep the server running</h3>
-        <p>To run the cloud storage server permanently:</p>
-        <pre><code>{`# Build for production (faster performance)
-npm run build
-
-# Start the production server
-npm run start
-
-# Or use PM2 for auto-restart on crash:
-npm install -g pm2
-pm2 start npm --name "cloud-storage" -- start
-pm2 save
-pm2 startup`}</code></pre>
-
-        <h3>Security checklist</h3>
-        <ul>
-          <li>Change the default password in <code>.env.local</code></li>
-          <li>Change the <code>JWT_SECRET</code> to a random string (at least 32 characters)</li>
-          <li>Use Cloudflare Tunnel or Tailscale for encrypted connections (HTTPS)</li>
-          <li>Keep Windows and Node.js updated</li>
-          <li>Make sure the laptop stays powered on and connected</li>
-          <li>Consider setting up Windows power settings to prevent sleep</li>
-        </ul>
+        {/* ---- Section 7 ---- */}
+        <h2>7. Keep the Server Running 24/7</h2>
 
         <h3>Prevent laptop from sleeping</h3>
         <p>Open PowerShell as Administrator and run:</p>
         <pre><code>{`# Disable sleep on AC power
 powercfg /change standby-timeout-ac 0
-powercfg /change hibernate-timeout-ac 0`}</code></pre>
+powercfg /change hibernate-timeout-ac 0
+
+# Disable screen turn-off (optional)
+powercfg /change monitor-timeout-ac 0`}</code></pre>
+
+        <h3>Run the server in production mode</h3>
+        <pre><code>{`# Build for production (faster and more stable)
+cd E:\\cloud-storage
+npm run build
+npm run start`}</code></pre>
 
         <h3>Auto-start on boot</h3>
         <p>
-          Create a batch file in your Startup folder (<code>shell:startup</code>) that runs the
-          server and tunnel automatically when you log in:
+          Create a batch file and place it in your Startup folder. Press <code>Win+R</code>,
+          type <code>shell:startup</code>, press Enter, then create this file:
         </p>
         <pre><code>{`@echo off
+title Cloud Storage Server
 cd /d E:\\cloud-storage
-start /B npm run start
-timeout /t 5
-start /B cloudflared tunnel --url http://localhost:3000`}</code></pre>
+npm run start`}</code></pre>
+        <p>Save it as <code>start-cloud.bat</code>. The server will start automatically when you log in.</p>
+
+        <div className="guide-note">
+          <p>
+            <strong>Tip:</strong> Tailscale starts automatically on boot by default. You only need to
+            auto-start the cloud storage server.
+          </p>
+        </div>
+
+        {/* ---- Section 8 ---- */}
+        <h2>8. Security Checklist</h2>
+        <ul>
+          <li>Use a strong PIN (not something easy to guess)</li>
+          <li>Keep Windows and Node.js updated</li>
+          <li>Enable Tailscale key expiry in the admin console for extra security</li>
+          <li>Review connected devices regularly in the Tailscale admin panel</li>
+          <li>Enable MagicDNS + HTTPS for encrypted connections</li>
+          <li>Keep the laptop physically secure (it holds all your files)</li>
+          <li>Consider enabling Windows BitLocker on the E: drive for at-rest encryption</li>
+        </ul>
+
+        <h3>Enable BitLocker on E: drive (at-rest encryption)</h3>
+        <p>This encrypts all files on the drive so they cannot be read if the laptop is stolen:</p>
+        <pre><code>{`# Open PowerShell as Administrator
+Enable-BitLocker -MountPoint "E:" -EncryptionMethod XtsAes256 -UsedSpaceOnly -RecoveryPasswordProtector
+
+# Save the recovery key somewhere safe!
+# You can also enable via: Control Panel -> BitLocker Drive Encryption`}</code></pre>
+
+        {/* ---- Section 9 ---- */}
+        <h2>9. Troubleshooting</h2>
+
+        <h3>Cannot connect from remote device</h3>
+        <ul>
+          <li>Make sure Tailscale is running on BOTH devices (check system tray / VPN toggle)</li>
+          <li>Make sure both devices are signed into the same Tailscale account</li>
+          <li>Try <code>tailscale ping &lt;laptop-ip&gt;</code> from the remote device</li>
+          <li>Check that the cloud storage server is running: open <code>http://localhost:3000</code> on the laptop</li>
+          <li>Check Windows Firewall: allow Node.js through the firewall</li>
+        </ul>
+
+        <h3>Allow Node.js through Windows Firewall</h3>
+        <pre><code>{`# Run in PowerShell as Administrator
+New-NetFirewallRule -DisplayName "Node.js" -Direction Inbound -Program "C:\\Program Files\\nodejs\\node.exe" -Action Allow
+New-NetFirewallRule -DisplayName "Cloud Storage 3000" -Direction Inbound -LocalPort 3000 -Protocol TCP -Action Allow`}</code></pre>
+
+        <h3>Connection is slow</h3>
+        <ul>
+          <li>Tailscale uses direct P2P connections when possible -- check with <code>tailscale status</code></li>
+          <li>If traffic is going through a relay (DERP), it may be slower</li>
+          <li>Make sure your laptop has a good internet connection</li>
+          <li>For large files, a wired (Ethernet) connection is faster than Wi-Fi</li>
+        </ul>
 
         <div style={{ marginTop: 48, paddingTop: 24, borderTop: "1px solid var(--border-color)" }}>
           <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
-            Need help? Check the official documentation:
-            Cloudflare Tunnel (<code>developers.cloudflare.com</code>),
-            Tailscale (<code>tailscale.com/kb</code>),
-            ngrok (<code>ngrok.com/docs</code>).
+            Official documentation: Tailscale (<code>tailscale.com/kb</code>).
+            For support, visit <code>tailscale.com/contact</code>.
           </p>
         </div>
       </div>

@@ -17,7 +17,11 @@ export const metadata: Metadata = {
   description: "Personal cloud storage hosted on your local machine. Upload, download, and manage files securely.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" className={`${inter.variable} ${geistMono.variable}`}>
       <body>{children}</body>

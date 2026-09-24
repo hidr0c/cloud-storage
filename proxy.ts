@@ -5,9 +5,9 @@ import { verifyToken } from "@/lib/auth";
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow public paths
-  const publicPaths = ["/login", "/api/auth/login"];
-  if (publicPaths.some((p) => pathname.startsWith(p))) {
+  // Allow public paths: login, auth APIs, guide
+  const publicPaths = ["/login", "/api/auth/login", "/api/auth/logout", "/guide"];
+  if (publicPaths.some((p) => pathname === p || pathname.startsWith(p + "/") || pathname.startsWith(p + "?"))) {
     return NextResponse.next();
   }
 
@@ -20,14 +20,23 @@ export function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
     // Return 401 for API requests
-    return Response.json(
+    return NextResponse.json(
       { error: "Unauthorized" },
       { status: 401 }
     );
   }
 
-  return NextResponse.next();
+  // Add security headers to authenticated responses
+  const response = NextResponse.next();
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-XSS-Protection", "1; mode=block");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+
+  return response;
 }
+
+export default proxy;
 
 export const config = {
   matcher: [

@@ -45,41 +45,37 @@ export interface DiskUsage {
 }
 
 export function getDiskUsage(): DiskUsage {
+  const root = getStorageRoot();
+
+  // Primary: Native Node.js statfs (no shell commands, no wmic, instant)
   try {
-    const root = getStorageRoot();
+    if (typeof fs.statfsSync === "function") {
+      const stats = fs.statfsSync(root);
+      const total = Number(stats.blocks) * Number(stats.bsize);
+      const free = Number(stats.bavail || stats.bfree) * Number(stats.bsize);
+      const used = total - free;
+      const percent = total > 0 ? Math.round((used / total) * 10000) / 100 : 0;
+      return { total, used, free, percent };
+    }
+  } catch {
+    // Continue to fallback if statfsSync encounters an issue
+  }
+
+  // Fallback: PowerShell Get-PSDrive without spawning wmic
+  try {
     const drive = root.charAt(0).toUpperCase();
     const output = execSync(
-      `wmic logicaldisk where "DeviceID='${drive}:'" get Size,FreeSpace /format:csv`,
-      { encoding: "utf-8" }
+      `powershell -NoProfile -NonInteractive -Command "Get-PSDrive ${drive} | Select-Object Used,Free | ConvertTo-Json"`,
+      { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] }
     );
-    const lines = output.trim().split("\n").filter((l) => l.trim());
-    const lastLine = lines[lines.length - 1];
-    const parts = lastLine.split(",");
-    // CSV format: Node,FreeSpace,Size
-    const free = parseInt(parts[1], 10);
-    const total = parseInt(parts[2], 10);
-    const used = total - free;
-    const percent = Math.round((used / total) * 10000) / 100;
-
+    const data = JSON.parse(output.trim());
+    const used = Number(data.Used);
+    const free = Number(data.Free);
+    const total = used + free;
+    const percent = total > 0 ? Math.round((used / total) * 10000) / 100 : 0;
     return { total, used, free, percent };
   } catch {
-    // Fallback: try PowerShell
-    try {
-      const root = getStorageRoot();
-      const drive = root.charAt(0).toUpperCase();
-      const output = execSync(
-        `powershell -Command "Get-PSDrive ${drive} | Select-Object Used,Free | ConvertTo-Json"`,
-        { encoding: "utf-8" }
-      );
-      const data = JSON.parse(output.trim());
-      const used = data.Used;
-      const free = data.Free;
-      const total = used + free;
-      const percent = Math.round((used / total) * 10000) / 100;
-      return { total, used, free, percent };
-    } catch {
-      return { total: 0, used: 0, free: 0, percent: 0 };
-    }
+    return { total: 0, used: 0, free: 0, percent: 0 };
   }
 }
 
